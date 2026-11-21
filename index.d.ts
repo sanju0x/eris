@@ -523,13 +523,39 @@ declare namespace Eris {
     name_localizations?: Record<LocaleStrings, string>;
     type: ApplicationRoleConnectionMetadataTypes;
   }
+  interface LocaleCatalog {
+    [key: string]: string | ((...args: any[]) => string) | LocaleCatalog;
+  }
+  /** Extend this interface with the namespaces exported by your language files. */
+  interface TranslationSchema {
+    music: Record<"nowPlaying" | "queueEmpty" | "paused" | "resumed" | "added" | "skipped" | "stopped" | "queueCleared" | "shuffled" | "volume" | "noResults" | "joinVoice" | "play" | "pause" | "resume" | "skip" | "stop" | "queue" | "previous" | "next" | "lyrics" | "requester" | "duration" | "volumeLabel", string>;
+  }
+  type TranslationLeaf = { get(locale?: string): string };
+  type TranslationRoute<T> = {
+    [K in keyof T]: T[K] extends (...args: infer A) => string ? (...args: A) => TranslationLeaf
+      : T[K] extends string ? TranslationLeaf & ((values: Record<string, string | number>) => TranslationLeaf)
+      : TranslationRoute<T[K]>;
+  };
+  type Translations = TranslationRoute<TranslationSchema> & { get(locale?: string): TranslationSchema };
+
   interface I18n {
-    register(locale: string, messages: Record<string, string>): void;
+    defaultLocale: string;
+    tMessage(message: string, locales?: string | readonly (string | undefined)[], values?: Record<string, string | number>): string;
+    tMessage(message: AdvancedMessageContent, locales?: string | readonly (string | undefined)[], values?: Record<string, string | number>): AdvancedMessageContent;
+    register(locale: string, messages: LocaleCatalog): void;
+    load(directory: string): void;
+    get(locales?: string | readonly (string | undefined)[]): Translations;
+    commandLocalizations(keys: { name?: string; description?: string }): {
+      name_localizations?: Partial<Record<LocaleStrings, string>>;
+      description_localizations?: Partial<Record<LocaleStrings, string>>;
+    };
     t(key: string, locales?: string | readonly (string | undefined)[], values?: Record<string, string | number>): string;
   }
 
   interface ClientOptions {
     defaultLocale?: string;
+    localeDirectory?: string;
+    preferGuildLocale?: boolean;
     /** @deprecated */
     agent?: HTTPSAgent;
     allowedMentions?: AllowedMentions;
@@ -2173,6 +2199,7 @@ declare namespace Eris {
 
   export class Client extends EventEmitter {
     readonly i18n: I18n;
+    t(locale?: string): Translations;
     application?: { id: string; flags: number };
     bot: boolean;
     channelGuildMap: Record<string, string>;
@@ -2992,8 +3019,12 @@ declare namespace Eris {
   }
 
   export class Interaction extends Base {
+    readonly translations: Translations;
+    readonly translationLocales: (string | undefined)[];
     locale?: string;
     guildLocale?: string;
+    tMessage(message: string, values?: Record<string, string | number>): string;
+    tMessage(message: AdvancedMessageContent, values?: Record<string, string | number>): AdvancedMessageContent;
     t(key: string, values?: Record<string, string | number>): string;
     acknowledged: boolean;
     applicationID: string;
@@ -3157,6 +3188,7 @@ declare namespace Eris {
     application?: MessageApplication;
     applicationID?: string;
     attachments: Attachment[];
+    t(key: string, values?: Record<string, string | number>): string;
     author: User;
     call?: MessageCall;
     channel: T;
