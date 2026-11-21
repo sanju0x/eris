@@ -53,94 +53,28 @@ More examples can be found in [the examples folder](https://github.com/abalabaha
 Translated bot replies
 ----------------------
 
-Eris bundles music messages, player controls, and command help in English,
-Malayalam, Hindi, Tamil, Korean, Japanese, Simplified and Traditional Chinese,
-Indonesian, Brazilian Portuguese, Spanish, and French. See the complete
-[music catalog](lib/locales/music.json) and [command catalog](lib/locales/commands.json).
-
-Build a reply from catalog keys and translate it each time you send or edit it:
+Each client has an i18n catalog. The bundled music keys are `music.nowPlaying`,
+`music.queueEmpty`, `music.paused`, and `music.resumed`. They cover English,
+Malayalam, Hindi, Tamil, Korean, Japanese, Chinese (Simplified and Traditional),
+Indonesian, Brazilian Portuguese, Spanish, and French.
 
 ```js
-// In your interactionCreate handler, with the current track title:
-const player = {
-  content: "music.nowPlaying",
-  components: [{
-    type: 1,
-    components: [{ type: 2, style: 2, custom_id: "pause", label: "music.pause" }],
-  }],
-};
-await interaction.createMessage(interaction.tMessage(player, { title }));
+const bot = new Eris.Client(token, { defaultLocale: "en" });
+bot.i18n.register("en", { "music.added": "Added {title} to the queue." });
+bot.i18n.register("ml", { "music.added": "{title} ക്യൂവിൽ ചേർത്തു." });
 
-// If your bot has a saved language setting, pass that language explicitly.
-// Use the original template to refresh an existing player after a language change.
-await interaction.editOriginalMessage(bot.i18n.tMessage(player, savedLocale, { title }));
+// In a command interaction handler:
+await interaction.createMessage(interaction.t("music.nowPlaying", { title }));
+
+// For prefix commands, pass the user's or server's saved language explicitly:
+const reply = bot.i18n.t("music.added", "ml", { title });
 ```
 
-`tMessage` translates registered keys in message content, embed text and fields,
-component labels, select options, placeholders, attachment descriptions, and
-poll text. IDs, URLs, and option values pass through. Use placeholders for song
-titles, usernames, and other dynamic values. To cover your bot's own wording,
-register each phrase in each supported language:
-
-```js
-bot.i18n.register("en", { "trial.claim": "Claim free trial" });
-bot.i18n.register("ml", { "trial.claim": "സൗജന്യ ട്രയൽ നേടുക" });
-```
-
-For single strings use `interaction.t(key, values)`. Interactions try the user's
-Discord locale, the guild locale, the client's default locale, then English.
-Prefix command help uses `msg.t(key, values)`, which starts with the guild
-locale. Set `bot.i18n.defaultLocale` to change the fallback at runtime. Regional
-tags try their parent language. Unregistered strings pass through verbatim.
-
-### Seyfert-style language files
-
-Set `localeDirectory` to a directory of locale-named JSON or CommonJS files
-such as `ml.json` and `en.js`. Each file can contain nested groups. CommonJS
-files can also export formatter functions. Eris loads these files at startup.
-You can also pass an imported catalog directly to `bot.i18n.register`.
-
-```js
-// languages/en.js
-module.exports = {
-  player: {
-    count: (n) => n === 1 ? "1 song" : `${n} songs`,
-    queueName: "queue",
-    queueDescription: "Show the playback queue",
-  },
-};
-```
-
-```js
-const bot = new Eris.Client(token, { localeDirectory: "./languages" });
-bot.on("interactionCreate", async (interaction) => {
-  if (interaction instanceof Eris.CommandInteraction && interaction.data.name === "queue") {
-    const t = interaction.translations;
-    await interaction.createMessage(t.player.count(queue.length).get());
-  }
-});
-```
-
-Use `bot.t("ml").music.pause.get()` for an explicit locale, or
-`interaction.translations.music.pause.get(savedLocale)` for a saved preference.
-Set `preferGuildLocale: true` to prioritize Discord's guild language for
-interaction replies. For TypeScript autocomplete, augment Eris with your
-application's namespaces:
-
-```ts
-import type en = require("./languages/en");
-declare module "eris" {
-  interface TranslationSchema {
-    player: typeof en.player;
-  }
-}
-```
-
-To publish translated slash-command names and descriptions, spread
-`bot.i18n.commandLocalizations({ name: "player.queueName", description: "player.queueDescription" })`
-into your command or option definition before registering it. The helper emits
-Discord-supported locales that have a matching string. Supply the ordinary
-default name and description alongside them.
+For each key, interactions try the user's Discord locale, the guild locale,
+the client's default locale, then English. Each locale also tries its parent
+language (for example, `fr-CA` tries `fr`). Missing keys return the key itself.
+Registration merges flat string keys and can override the starter messages.
+Existing replies use translations only when the bot calls a translation method.
 
 Useful Links
 ------------
