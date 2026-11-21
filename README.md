@@ -50,6 +50,56 @@ bot.connect(); // Get the bot to connect to Discord
 
 More examples can be found in [the examples folder](https://github.com/abalabahaha/eris/tree/master/examples).
 
+Command middleware and localization
+-----------------------------------
+
+Configure shared middleware and application-owned translations on a client.
+Middleware runs in registration order, followed by command-specific middleware.
+It can prepare invocation metadata, set a saved locale, or return `false` to
+stop execution. Each invocation gets its own metadata object.
+
+```js
+const bot = new Eris.CommandClient(token, {
+  defaultLocale: "en",
+  translations: {
+    ml: { ping: "പിംഗ്", "Check latency": "പ്രതികരണ സമയം പരിശോധിക്കുക", "Pong!": "പോങ്!" },
+    fr: { ping: "latence", "Check latency": "Vérifier la latence", "Pong!": "Pong !" },
+  },
+  commandMiddlewares: [
+    async (ctx) => {
+      ctx.metadata.started = Date.now();
+      // Set ctx.locale here to a saved user or server language if needed.
+    },
+  ],
+});
+
+bot.registerCommand("ping", (msg, args, ctx) => ctx.t("Pong!"), {
+  description: "Check latency",
+  middlewares: [(ctx) => { if (!ctx.source.author) return false; }],
+});
+
+bot.on("interactionCreate", async (interaction) => {
+  if (interaction instanceof Eris.CommandInteraction && interaction.data.name === "ping") {
+    await bot.runCommand(interaction, (ctx) =>
+      interaction.createMessage(ctx.t("Pong!")));
+  }
+});
+
+// In your command-registration routine after the client is ready:
+await bot.createCommand(bot.localizeCommand({
+  name: "ping",
+  description: "Check latency",
+}));
+```
+
+`localizeCommand` builds Discord localization maps for names, descriptions,
+nested options and choices. Use valid default command names and descriptions
+as translation keys. Only Discord-supported locales are included in the maps.
+Responses can use additional languages and interpolate values such as
+`ctx.t("Hello {name}", { name: "Delta" })`. Unknown phrases fall back to their
+original text. Prefix commands use the guild locale, and application commands
+use the invoking user's locale when available.
+
 Useful Links
 ------------
 
