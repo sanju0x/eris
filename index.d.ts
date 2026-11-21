@@ -93,7 +93,7 @@ declare namespace Eris {
 
   // Command
   type CommandGenerator = CommandGeneratorFunction | MessageContent | MessageContent[] | CommandGeneratorFunction[];
-  type CommandGeneratorFunction = (msg: Message, args: string[]) => GeneratorFunctionReturn;
+  type CommandGeneratorFunction = (msg: Message, args: string[], context: CommandContext<Message>) => GeneratorFunctionReturn;
   type GeneratorFunctionReturn = Promise<MessageContent> | Promise<void> | MessageContent | void;
   type GenericCheckFunction<T> = (msg: Message) => T | Promise<T>;
   type ReactionButtonsFilterFunction = (msg: Message, emoji: Emoji, userID: string) => boolean;
@@ -523,7 +523,20 @@ declare namespace Eris {
     name_localizations?: Record<LocaleStrings, string>;
     type: ApplicationRoleConnectionMetadataTypes;
   }
+  interface CommandContext<S extends Message | CommandInteraction = Message | CommandInteraction> {
+    client: Client;
+    source: S;
+    args: string[];
+    command?: Command;
+    metadata: Record<string, unknown>;
+    locale: string;
+    t(key: string, values?: Record<string, string | number>): string;
+  }
+  type CommandMiddleware = (context: CommandContext) => boolean | void | Promise<boolean | void>;
   interface ClientOptions {
+    commandMiddlewares?: CommandMiddleware[];
+    translations?: Record<string, Record<string, string>>;
+    defaultLocale?: string;
     /** @deprecated */
     agent?: HTTPSAgent;
     allowedMentions?: AllowedMentions;
@@ -590,6 +603,7 @@ declare namespace Eris {
     userIDs?: string[];
   }
   interface CommandOptions {
+    middlewares?: CommandMiddleware[];
     aliases?: string[];
     argsRequired?: boolean;
     caseInsensitive?: boolean;
@@ -2166,6 +2180,8 @@ declare namespace Eris {
   }
 
   export class Client extends EventEmitter {
+    runCommand<S extends Message | CommandInteraction, R>(source: S, handler: (context: CommandContext<S>) => R, middlewares?: CommandMiddleware[], args?: string[], command?: Command): Promise<Awaited<R> | undefined>;
+    localizeCommand<T extends { name?: string }>(definition: T): T & { name_localizations?: Partial<Record<LocaleStrings, string>> | null; description_localizations?: Partial<Record<LocaleStrings, string>> | null };
     application?: { id: string; flags: number };
     bot: boolean;
     channelGuildMap: Record<string, string>;
@@ -2482,6 +2498,7 @@ declare namespace Eris {
   }
 
   export class Command implements CommandOptions, SimpleJSON {
+    middlewares: CommandMiddleware[];
     aliases: string[];
     argsRequired: boolean;
     caseInsensitive: boolean;
@@ -2985,6 +3002,8 @@ declare namespace Eris {
   }
 
   export class Interaction extends Base {
+    locale?: string;
+    guildLocale?: string;
     acknowledged: boolean;
     applicationID: string;
     id: string;
