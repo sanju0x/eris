@@ -1496,6 +1496,9 @@ declare namespace Eris {
     avatar?: string | null;
     banner?: string | null;
     bio?: string | null;
+    displayNameFontID?: number | null;
+    displayNameEffectID?: number | null;
+    displayNameColors?: number[] | null;
     nick?: string | null;
     reason?: string;
   }
