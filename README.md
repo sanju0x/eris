@@ -100,6 +100,46 @@ Responses can use additional languages and interpolate values such as
 original text. Prefix commands use the guild locale, and application commands
 use the invoking user's locale when available.
 
+Automatic shard sizing
+----------------------
+
+For a single-process bot running every shard, enable automatic shard sizing:
+
+```js
+const bot = new Eris.Client(token, {
+  autoShard: {
+    targetGuildsPerShard: 450,
+    maxGuildsPerShard: 500,
+    checkInterval: 300000,
+    cooldown: 900000,
+  },
+});
+
+bot.on("reshard", (oldCount, newCount, guildCount) => {
+  console.log(`Resharding ${guildCount} guilds: ${oldCount} -> ${newCount}`);
+});
+
+bot.connect();
+```
+
+Set `autoShard: true` to use these defaults. Eris paginates the bot's guilds
+at startup and tests Discord's actual snowflake-based shard distribution. The
+count is at least Discord's recommended count and any numeric `maxShards` you
+configure. It aims for 450 guilds per shard and checks every five minutes for
+shards above 500 guilds.
+
+When growth requires a new layout, Eris checks the gateway session start budget
+and reconnects all shards using the existing Identify concurrency scheduler.
+It waits until all shards are ready and no known bot voice connections are
+active or pending. This creates a short gateway interruption and a new
+`ready` event. Keep persistent application state outside the guild cache and
+make ready handlers safe to run again. The runtime only increases the shard
+count, with a fifteen-minute default cooldown between resizes.
+
+Automatic shard sizing requires the full shard range and standard Discord
+sharding. Applications assigned Discord's large-bot sharding configuration
+should continue to use their assigned shard multiple and explicit shard ranges.
+
 Useful Links
 ------------
 

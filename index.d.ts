@@ -534,6 +534,7 @@ declare namespace Eris {
   }
   type CommandMiddleware = (context: CommandContext) => boolean | void | Promise<boolean | void>;
   interface ClientOptions {
+    autoShard?: boolean | AutomaticShardOptions;
     commandMiddlewares?: CommandMiddleware[];
     translations?: Record<string, Record<string, string>>;
     defaultLocale?: string;
@@ -568,6 +569,12 @@ declare namespace Eris {
     seedVoiceConnections?: boolean;
     shardConcurrency?: number | "auto";
     ws?: unknown;
+  }
+  interface AutomaticShardOptions {
+    targetGuildsPerShard?: number;
+    maxGuildsPerShard?: number;
+    checkInterval?: number;
+    cooldown?: number;
   }
   interface CommandClientOptions {
     argsSplitter?: (str: string) => string[];
@@ -1016,6 +1023,7 @@ declare namespace Eris {
     webhooksUpdate: [data: WebhookData];
   }
   interface ClientEvents extends EventListeners {
+    reshard: [oldCount: number, newCount: number, guildCount: number];
     shardDisconnect: [err: Error | undefined, id: number];
     shardReady: [id: number];
     shardResume: [id: number];
